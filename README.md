@@ -81,7 +81,6 @@ Esto implica que:
 
 - `Íntima` siempre se percibe más cercana
 - `Grande` siempre se percibe más amplia
-- la emoción debe matizar, no romper el espacio
 
 ---
 
@@ -291,7 +290,6 @@ This means:
 
 - `Intimate` always feels closer
 - `Large` always feels wider
-- emotion should refine, not break the space
 
 ---
 
