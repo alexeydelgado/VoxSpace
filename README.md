@@ -9,7 +9,19 @@ Generador de reverb vocal basado en BPM para tomar decisiones rápidas y musical
 ![VoxSpace Interface](docs/images/white_ui.png)
 
 ---
+## Instalación
 
+1. Descarga la última versión desde la sección Releases  
+2. Abre el archivo `.dmg`  
+3. Arrastra VoxSpace a la carpeta Aplicaciones  
+4. Abre la app
+
+⚠️ Si macOS bloquea la app:
+- Ve a Ajustes del sistema → Privacidad y seguridad  
+- Pulsa “Abrir de todos modos”
+
+  ---
+  
 ## Uso rápido
 
 1. Introduce el BPM de tu track  
@@ -207,7 +219,19 @@ BPM-based vocal reverb generator for fast, musically coherent mixing decisions.
 ![VoxSpace Interface](docs/images/white_ui.png)
 
 ---
+## Installation
 
+1. Download the latest version from the Releases section  
+2. Open the `.dmg` file  
+3. Drag VoxSpace to the Applications folder  
+4. Open the app
+
+⚠️ If macOS blocks the app:
+- Go to System Settings → Privacy & Security  
+- Click “Open Anyway”
+
+  ---
+  
 ## Quick Use
 
 1. Enter your track BPM  
