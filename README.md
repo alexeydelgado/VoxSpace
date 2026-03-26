@@ -34,12 +34,6 @@ Está diseñada para evitar decisiones a ciegas al usar reverb y acelerar el flu
 
 ---
 
-## Captura
-
-![VoxSpace Interface](docs/images/white_ui.png)
-
----
-
 ## Qué hace la app
 
 El usuario introduce un BPM y selecciona:
@@ -235,12 +229,6 @@ VoxSpace is a macOS app built with SwiftUI to quickly generate vocal reverb sett
 
 The goal of the app is not to replace your ear or mix for you, but to provide a fast, coherent and musical starting point.
 It is designed to avoid blind decisions when using reverb and to speed up the mixing workflow.
-
----
-
-## Screenshot
-
-![VoxSpace Interface](docs/images/white_ui.png)
 
 ---
 
