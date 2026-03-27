@@ -1,0 +1,269 @@
+{
+  "color-space-for-untagged-svg-colors" : "display-p3",
+  "fill-specializations" : [
+    {
+      "value" : "system-light"
+    },
+    {
+      "appearance" : "dark",
+      "value" : "system-dark"
+    }
+  ],
+  "groups" : [
+    {
+      "blur-material-specializations" : [
+        {
+          "value" : 0.14
+        },
+        {
+          "appearance" : "dark",
+          "value" : 0.09
+        }
+      ],
+      "layers" : [
+        {
+          "fill" : "none",
+          "glass" : true,
+          "hidden-specializations" : [
+            {
+              "value" : false
+            },
+            {
+              "idiom" : "square",
+              "value" : false
+            }
+          ],
+          "image-name" : "8_Elipse.svg",
+          "name" : "8_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              311.5326296968659,
+              0
+            ]
+          }
+        }
+      ],
+      "opacity" : 1,
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "neutral",
+            "opacity" : 0.77
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "neutral",
+            "opacity" : 0.71
+          }
+        }
+      ],
+      "specular" : false,
+      "translucency-specializations" : [
+        {
+          "value" : {
+            "enabled" : true,
+            "value" : 0.78
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "enabled" : true,
+            "value" : 0.8
+          }
+        }
+      ]
+    },
+    {
+      "blur-material" : 0.15,
+      "layers" : [
+        {
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "7_Elipse.svg",
+          "name" : "7_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              222.6646605536614,
+              0
+            ]
+          }
+        }
+      ],
+      "lighting" : "individual",
+      "opacity" : 1,
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.47
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.21
+          }
+        }
+      ],
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.67
+      }
+    },
+    {
+      "blur-material" : 0.3,
+      "layers" : [
+        {
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "6_Elipse.svg",
+          "name" : "6_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              133.03282550079763,
+              0
+            ]
+          }
+        }
+      ],
+      "opacity" : 1,
+      "shadow-specializations" : [
+        {
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.61
+          }
+        },
+        {
+          "appearance" : "dark",
+          "value" : {
+            "kind" : "layer-color",
+            "opacity" : 0.39
+          }
+        }
+      ],
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.76
+      }
+    },
+    {
+      "blur-material" : 0.09,
+      "hidden" : false,
+      "layers" : [
+        {
+          "hidden" : false,
+          "image-name" : "5_Elipse.svg",
+          "name" : "5_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              51.932622338886404,
+              0
+            ]
+          }
+        },
+        {
+          "hidden" : false,
+          "image-name" : "4_Elipse.svg",
+          "name" : "4_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -47.04800586229578,
+              0
+            ]
+          }
+        },
+        {
+          "glass" : true,
+          "image-name" : "3_Elipse.svg",
+          "name" : "3_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -130.7426938202126,
+              -0.6305632999491309
+            ]
+          }
+        },
+        {
+          "glass" : true,
+          "image-name" : "1_Elipse.svg",
+          "name" : "1_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -214.14211491385674,
+              0
+            ]
+          }
+        },
+        {
+          "fill-specializations" : [
+            {
+              "value" : {
+                "linear-gradient" : [
+                  "display-p3:0.81902,0.85613,0.94238,1.00000",
+                  "display-p3:0.98096,0.96289,0.95557,1.00000"
+                ],
+                "orientation" : {
+                  "start" : {
+                    "x" : 1.3464036924405063,
+                    "y" : 0.14547179859420575
+                  },
+                  "stop" : {
+                    "x" : -0.22515550798726142,
+                    "y" : 0.04071017673843013
+                  }
+                }
+              }
+            },
+            {
+              "appearance" : "dark",
+              "value" : "none"
+            }
+          ],
+          "glass" : true,
+          "hidden" : false,
+          "image-name" : "0_Elipse.svg",
+          "name" : "0_Elipse",
+          "position" : {
+            "scale" : 1,
+            "translation-in-points" : [
+              -307.6892217546082,
+              0
+            ]
+          }
+        }
+      ],
+      "lighting" : "combined",
+      "name" : "Group",
+      "opacity" : 1,
+      "shadow" : {
+        "kind" : "neutral",
+        "opacity" : 1
+      },
+      "specular" : false,
+      "translucency" : {
+        "enabled" : true,
+        "value" : 0.16
+      }
+    }
+  ],
+  "supported-platforms" : {
+    "circles" : [
+      "watchOS"
+    ],
+    "squares" : "shared"
+  }
+}

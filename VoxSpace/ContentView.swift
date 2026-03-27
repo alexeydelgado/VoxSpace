@@ -1,360 +1,16 @@
 import SwiftUI
 import AppKit
 
-// MARK: - Enums
-
-enum Emotion: String, CaseIterable, Codable {
-    case frio = "Frío"
-    case cercano = "Cálido"
-    case tenso = "Tenso"
-    case vacio = "Vacío"
-}
-
-enum Role: String, CaseIterable, Codable {
-    case lead = "Principal"
-    case back = "Coros"
-    case adlib = "Adlibs"
-    case textura = "Textura"
-}
-
-enum AppLanguage: String, CaseIterable, Identifiable {
-    case spanish = "es"
-    case english = "en"
-
-    var id: String { rawValue }
-
-    var title: String {
-        switch self {
-        case .spanish:
-            return "Español"
-        case .english:
-            return "English"
-        }
-    }
-}
-
-// MARK: - Modelo
-
-struct HistoryItem: Identifiable, Equatable, Codable {
-    let id: UUID
-    let bpm: Double
-    let multiplier: Double
-    let mode: String
-    let emotion: Emotion
-    let role: Role
-    let preDelay: Int
-    let decay: Int
-    let decayVal: String
-    let send: String
-    let eq: String
-    let note: String
-
-    init(
-        id: UUID = UUID(),
-        bpm: Double,
-        multiplier: Double,
-        mode: String,
-        emotion: Emotion,
-        role: Role,
-        preDelay: Int,
-        decay: Int,
-        decayVal: String,
-        send: String,
-        eq: String,
-        note: String
-    ) {
-        self.id = id
-        self.bpm = bpm
-        self.multiplier = multiplier
-        self.mode = mode
-        self.emotion = emotion
-        self.role = role
-        self.preDelay = preDelay
-        self.decay = decay
-        self.decayVal = decayVal
-        self.send = send
-        self.eq = eq
-        self.note = note
-    }
-}
-
-private struct RootContentHeightKey: PreferenceKey {
-    static var defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = nextValue()
-    }
-}
-
-private struct ScrollInteractionObserver: NSViewRepresentable {
-    let onUserScroll: () -> Void
-    let onOverflowChange: (Bool) -> Void
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(onUserScroll: onUserScroll, onOverflowChange: onOverflowChange)
-    }
-
-    func makeNSView(context: Context) -> NSView {
-        let view = TrackingNSView()
-        view.onAttach = { [weak coordinator = context.coordinator, weak view] in
-            guard let coordinator, let view else { return }
-            coordinator.attach(to: view)
-        }
-        context.coordinator.attach(to: view)
-        return view
-    }
-
-    func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.onUserScroll = onUserScroll
-        context.coordinator.onOverflowChange = onOverflowChange
-        context.coordinator.attach(to: nsView)
-    }
-
-    static func dismantleNSView(_ nsView: NSView, coordinator: Coordinator) {
-        coordinator.detach()
-    }
-
-    final class TrackingNSView: NSView {
-        var onAttach: (() -> Void)?
-
-        override func viewDidMoveToSuperview() {
-            super.viewDidMoveToSuperview()
-            onAttach?()
-        }
-
-        override func viewDidMoveToWindow() {
-            super.viewDidMoveToWindow()
-            onAttach?()
-        }
-    }
-
-    final class Coordinator {
-        var onUserScroll: () -> Void
-        var onOverflowChange: (Bool) -> Void
-        private weak var observedScrollView: NSScrollView?
-        private weak var observedView: NSView?
-        private var localMonitor: Any?
-        private var boundsObserver: NSObjectProtocol?
-        private var frameObserver: NSObjectProtocol?
-
-        init(onUserScroll: @escaping () -> Void, onOverflowChange: @escaping (Bool) -> Void) {
-            self.onUserScroll = onUserScroll
-            self.onOverflowChange = onOverflowChange
-        }
-
-        func attach(to view: NSView) {
-            DispatchQueue.main.async { [weak self, weak view] in
-                guard let self, let view else { return }
-                let scrollView = view.enclosingScrollView
-                    ?? sequence(first: view.superview, next: { $0?.superview })
-                        .compactMap { $0 as? NSScrollView }
-                        .first
-
-                guard observedScrollView !== scrollView else { return }
-
-                detach()
-                observedScrollView = scrollView
-                observedView = view
-
-                guard scrollView != nil else { return }
-                let clipView = scrollView!.contentView
-                clipView.postsBoundsChangedNotifications = true
-                scrollView!.documentView?.postsFrameChangedNotifications = true
-
-                boundsObserver = NotificationCenter.default.addObserver(
-                    forName: NSView.boundsDidChangeNotification,
-                    object: clipView,
-                    queue: .main
-                ) { [weak self] _ in
-                    self?.reportOverflow()
-                }
-
-                frameObserver = NotificationCenter.default.addObserver(
-                    forName: NSView.frameDidChangeNotification,
-                    object: scrollView!.documentView,
-                    queue: .main
-                ) { [weak self] _ in
-                    self?.reportOverflow()
-                }
-
-                reportOverflow()
-
-                localMonitor = NSEvent.addLocalMonitorForEvents(matching: .scrollWheel) { [weak self] event in
-                    guard let self else { return event }
-                    guard
-                        let observedView = self.observedView,
-                        let observedScrollView = self.observedScrollView,
-                        let window = observedView.window,
-                        event.window === window
-                    else {
-                        return event
-                    }
-
-                    let locationInWindow = event.locationInWindow
-                    let locationInScrollView = observedScrollView.convert(locationInWindow, from: nil)
-                    guard observedScrollView.bounds.contains(locationInScrollView) else {
-                        return event
-                    }
-
-                    self.onUserScroll()
-                    return event
-                }
-            }
-        }
-
-        private func reportOverflow() {
-            guard let scrollView = observedScrollView else { return }
-            let documentHeight = scrollView.documentView?.frame.height ?? 0
-            let viewportHeight = scrollView.contentView.bounds.height
-            onOverflowChange(documentHeight > viewportHeight)
-        }
-
-        func detach() {
-            if let localMonitor {
-                NSEvent.removeMonitor(localMonitor)
-                self.localMonitor = nil
-            }
-            if let boundsObserver {
-                NotificationCenter.default.removeObserver(boundsObserver)
-                self.boundsObserver = nil
-            }
-            if let frameObserver {
-                NotificationCenter.default.removeObserver(frameObserver)
-                self.frameObserver = nil
-            }
-            observedView = nil
-            observedScrollView = nil
-        }
-
-        deinit {
-            detach()
-        }
-    }
-}
-
-// MARK: - Motor
-
-fileprivate func generarReverbInteligente(
-    bpm: Double,
-    size: String,
-    emotion: Emotion,
-    role: Role
-) -> (preDelay: Double, decay: Double, send: String, eq: String, note: String) {
-
-    let quarter = 60000 / bpm
-
-    // Modo clásico: fórmula directa del usuario
-    if size == "Modo clásico" {
-        let baseDecayMs = quarter / 2
-        let pre = baseDecayMs / 6
-        let decay = baseDecayMs / 1000
-        
-        let send = "-15 dB"
-        let eq = "Flat"
-        let note = "Modo clásico (tempo directo)"
-        
-        return (pre, decay, send, eq, note)
-    }
-
-    let pre: Double
-    switch size {
-    case "Voz íntima": pre = max(20, quarter / 64)
-    case "Natural", "Normal": pre = quarter / 32
-    case "Grande": pre = quarter / 16
-    default: pre = quarter / 32
-    }
-
-    // Tiempo base musical
-    let bar = quarter * 4 // 1 compás en ms
-
-    // Subdivisión según tamaño
-    let sizeSubdivision: Double
-    switch size {
-    case "Voz íntima": sizeSubdivision = 0.25   // 1/4 compás
-    case "Natural", "Normal": sizeSubdivision = 0.5        // 1/2 compás
-    case "Grande": sizeSubdivision = 1.0        // 1 compás
-    default: sizeSubdivision = 0.5
-    }
-
-    // Ajuste emocional (multiplicador sutil)
-    let emotionFactor: Double
-    switch emotion {
-    case .frio: emotionFactor = 0.95
-    case .cercano: emotionFactor = 0.98
-    case .tenso: emotionFactor = 1.1
-    case .vacio: emotionFactor = 1.25
-    }
-
-    // Decay final en segundos (musical)
-    let decay = (bar * sizeSubdivision * emotionFactor) / 1000
-
-    let send: String
-    switch role {
-    case .lead: send = "-18 dB"
-    case .back: send = "-15 dB"
-    case .adlib: send = "-12 dB"
-    case .textura: send = "-9 dB"
-    }
-
-    let eq: String
-    switch emotion {
-    case .frio: eq = "HPF 180Hz / shelf +2dB @ 7kHz"
-    case .cercano: eq = "HPF 120Hz / shelf -2dB @ 8kHz"
-    case .tenso: eq = "HPF 200Hz / peak +2dB @ 2.5kHz"
-    case .vacio: eq = "HPF 250Hz / LPF 6kHz"
-    }
-
-    let note: String
-    switch role {
-    case .lead: note = "Separación clara con pre-delay"
-    case .back: note = "Abrir en estéreo"
-    case .adlib: note = "Automatizar envío"
-    case .textura: note = "No priorizar claridad"
-    }
-
-    return (pre, decay, send, eq, note)
-}
-
-// MARK: - UI
-
 struct ContentView: View {
-    private struct PersistedSelection: Codable {
-        let bpm: String
-        let bpmMultiplier: Double
-        let mode: String
-        let emotion: Emotion
-        let role: Role
-        let isHistoryExpanded: Bool
-    }
+    @StateObject private var store = VoxSpaceStore()
 
-    private enum StorageKey {
-        static let history = "voxspace.history"
-        static let selection = "voxspace.selection"
-    }
-    
     enum CopyField {
         case pre, decay, send
     }
     @State private var copiedField: CopyField?
     @State private var copyResetWorkItem: DispatchWorkItem?
     @AppStorage("selectedLanguageCode") private var selectedLanguageCode: String = AppLanguage.spanish.rawValue
-    
-    @State private var bpm: String = "120"
-    @State private var lastValidBPM: String = "120"
-    @State private var bpmMultiplier: Double = 1.0
-    @State private var mode: String = "Voz íntima"
-    
-    @State private var emotion: Emotion = .frio
-    @State private var role: Role = .lead
-    
-    @State private var preDelay: Double = 0
-    @State private var decay: Int = 0
-    @State private var decayVal: String = ""
-    @State private var sendLevel: String = ""
-    @State private var eqText: String = ""
-    @State private var noteText: String = ""
-    
-    @State private var history: [HistoryItem] = []
+
     @State private var selectedHistory: UUID?
     @State private var hoveredHistory: UUID?
     @State private var historyHasOverflow: Bool = false
@@ -362,18 +18,14 @@ struct ContentView: View {
     @State private var colorSchemeOverride: ColorScheme? = nil
     @State private var observedSystemScheme: ColorScheme = .light
     @State private var appearanceObservation: NSKeyValueObservation?
-    @State private var isHistoryExpanded: Bool = true
     @State private var displayedModeHelpText: String = ""
     @State private var isModeHelpTransitioning: Bool = false
     @State private var measuredContentHeight: CGFloat = 0
-    @State private var hasLoadedPersistedState = false
 
     // Hover feedback states for Emotion and Role menus
     @State private var hoveredEmotion: Bool = false
     @State private var hoveredRole: Bool = false
     @State private var hoveredSaveButton: Bool = false
-    
-    let modes = ["Modo clásico", "Voz íntima", "Natural", "Grande"]
 
     private var language: AppLanguage {
         AppLanguage(rawValue: selectedLanguageCode) ?? .spanish
@@ -392,6 +44,117 @@ struct ContentView: View {
         static let selectorHeight: CGFloat = 34
         static let emotionControlWidth: CGFloat = 112
         static let roleControlWidth: CGFloat = 140
+    }
+
+    private var persistHistoryEnabled: Bool {
+        get { store.persistHistoryEnabled }
+        nonmutating set { store.persistHistoryEnabled = newValue }
+    }
+
+    private var bpm: String {
+        get { store.bpm }
+        nonmutating set { store.bpm = newValue }
+    }
+
+    private var lastValidBPM: String {
+        get { store.lastValidBPM }
+        nonmutating set { store.lastValidBPM = newValue }
+    }
+
+    private var bpmMultiplier: Double {
+        get { store.bpmMultiplier }
+        nonmutating set { store.bpmMultiplier = newValue }
+    }
+
+    private var mode: String {
+        get { store.mode }
+        nonmutating set { store.mode = newValue }
+    }
+
+    private var emotion: Emotion {
+        get { store.emotion }
+        nonmutating set { store.emotion = newValue }
+    }
+
+    private var role: Role {
+        get { store.role }
+        nonmutating set { store.role = newValue }
+    }
+
+    private var preDelay: Double {
+        get { store.preDelay }
+        nonmutating set { store.preDelay = newValue }
+    }
+
+    private var decay: Int {
+        get { store.decay }
+        nonmutating set { store.decay = newValue }
+    }
+
+    private var decayVal: String {
+        get { store.decayVal }
+        nonmutating set { store.decayVal = newValue }
+    }
+
+    private var sendLevel: String {
+        get { store.sendLevel }
+        nonmutating set { store.sendLevel = newValue }
+    }
+
+    private var eqText: String {
+        get { store.eqText }
+        nonmutating set { store.eqText = newValue }
+    }
+
+    private var noteText: String {
+        get { store.noteText }
+        nonmutating set { store.noteText = newValue }
+    }
+
+    private var history: [HistoryItem] {
+        get { store.history }
+        nonmutating set { store.history = newValue }
+    }
+
+    private var isHistoryExpanded: Bool {
+        get { store.isHistoryExpanded }
+        nonmutating set { store.isHistoryExpanded = newValue }
+    }
+
+    private var hasLoadedPersistedState: Bool {
+        get { store.hasLoadedPersistedState }
+        nonmutating set { store.hasLoadedPersistedState = newValue }
+    }
+
+    private var modes: [String] { store.modes }
+
+    private var bpmBinding: Binding<String> {
+        Binding(
+            get: { store.bpm },
+            set: { store.bpm = $0 }
+        )
+    }
+
+    @ViewBuilder
+    private func languageMenuLabel(for option: AppLanguage) -> some View {
+        if option == language {
+            Label(option.title, systemImage: "checkmark")
+        } else {
+            Text(option.title)
+        }
+    }
+
+    private var appearanceToolbarSymbolName: String {
+        switch colorSchemeOverride {
+        case nil:
+            return "circle.lefthalf.filled"
+        case .some(.dark):
+            return "moon.fill"
+        case .some(.light):
+            return "sun.max.fill"
+        default:
+            return "circle.lefthalf.filled"
+        }
     }
 
     private var modeHelpText: String {
@@ -511,14 +274,6 @@ struct ContentView: View {
         return max(fallbackHeight, measuredHeight)
     }
 
-    private var canScrollHistory: Bool {
-        historyHasOverflow
-    }
-
-    private var shouldDisplayHistoryHint: Bool {
-        canScrollHistory && !hasUserScrolled
-    }
-
     private var hasValidPreview: Bool {
         let trimmed = bpm.trimmingCharacters(in: .whitespacesAndNewlines)
         let cleaned = trimmed.replacingOccurrences(of: ",", with: ".")
@@ -584,25 +339,6 @@ struct ContentView: View {
         }
     }
 
-    private var historyToggleChip: some View {
-        ZStack {
-            historyToggleLabel(title: localizedText("Mostrar", "Show"), symbol: "chevron.down.circle.fill")
-                .opacity(isHistoryExpanded ? 0 : 1)
-
-            historyToggleLabel(title: localizedText("Ocultar", "Hide"), symbol: "chevron.up.circle.fill")
-                .opacity(isHistoryExpanded ? 1 : 0)
-        }
-        .frame(width: 86)
-        .transaction { transaction in
-            transaction.animation = nil
-        }
-        .foregroundStyle(isHistoryExpanded ? .secondary : .primary)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 6)
-        .background(Capsule().fill(Color.white.opacity(isHistoryExpanded ? 0.04 : 0.08)))
-        .background(.ultraThinMaterial, in: Capsule())
-    }
-    
     // MARK: - Dynamic Glass Tint
     private var glassTint: Color {
         let scheme = colorSchemeOverride ?? observedSystemScheme
@@ -920,8 +656,8 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .onAppear {
-            restorePersistedState()
-            calcularPreview()
+            store.restorePersistedState()
+            store.calcularPreview()
             startAppearanceObservation()
             resizeWindow(to: preferredWindowHeight, animated: false)
             hasLoadedPersistedState = true
@@ -933,22 +669,25 @@ struct ContentView: View {
             resizeWindow(to: newHeight, animated: false)
         }
         .onChange(of: history) { _ in
-            persistHistory()
+            store.persistHistory()
+        }
+        .onChange(of: persistHistoryEnabled) { isEnabled in
+            store.handleHistoryPersistenceChange(isEnabled)
         }
         .onChange(of: bpm) { _ in
-            persistSelection()
+            store.persistSelection()
         }
         .onChange(of: mode) { _ in
-            persistSelection()
+            store.persistSelection()
         }
         .onChange(of: emotion) { _ in
-            persistSelection()
+            store.persistSelection()
         }
         .onChange(of: role) { _ in
-            persistSelection()
+            store.persistSelection()
         }
         .onChange(of: isHistoryExpanded) { _ in
-            persistSelection()
+            store.persistSelection()
         }
         .frame(width: Layout.windowWidth)
         .frame(minHeight: preferredWindowHeight, alignment: .top)
@@ -960,12 +699,7 @@ struct ContentView: View {
                         Button {
                             selectedLanguageCode = option.rawValue
                         } label: {
-                            HStack {
-                                Text(option.title)
-                                if option == language {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                            languageMenuLabel(for: option)
                         }
                     }
                 } label: {
@@ -987,18 +721,7 @@ struct ContentView: View {
                         }
                     }
                 } label: {
-                    ZStack {
-                        switch colorSchemeOverride {
-                        case nil:
-                            Image(systemName: "circle.lefthalf.filled") // sistema
-                        case .some(.dark):
-                            Image(systemName: "moon.fill")
-                        case .some(.light):
-                            Image(systemName: "sun.max.fill")
-                        default:
-                            Image(systemName: "circle.lefthalf.filled")
-                        }
-                    }
+                    Image(systemName: appearanceToolbarSymbolName)
                     .symbolRenderingMode(.hierarchical)
                     .transition(.scale.combined(with: .opacity))
                     .id(colorSchemeOverride?.hashValue ?? -1)
@@ -1109,7 +832,7 @@ struct ContentView: View {
                         .font(.caption2)
                         .foregroundColor(.secondary)
                     
-                    TextField("120", text: $bpm)
+                    TextField("120", text: bpmBinding)
                         .frame(width: 60)
                         .font(.system(size: 18, weight: .semibold, design: .monospaced))
                         .textFieldStyle(.roundedBorder)
@@ -1235,299 +958,28 @@ struct ContentView: View {
     }
 
     private var historyView: some View {
-        Group {
-            if !history.isEmpty {
-                
-                VStack(alignment: .leading, spacing: 4) {
-                    
-                    Button {
-                        isHistoryExpanded.toggle()
-                    } label: {
-                        VStack(alignment: .leading, spacing: isHistoryExpanded ? 0 : 6) {
-                            HStack(alignment: .center, spacing: 12) {
-                                HStack(spacing: 6) {
-                                    Text(localizedText("Historial", "History"))
-                                        .font(.caption.weight(.semibold))
-                                        .foregroundStyle(.primary)
-
-                                    Text("\(history.count)")
-                                        .font(.caption2.weight(.semibold))
-                                        .foregroundStyle(.secondary)
-                                        .padding(.horizontal, 6)
-                                        .padding(.vertical, 2)
-                                        .background(.ultraThinMaterial, in: Capsule())
-                                }
-                                .frame(maxWidth: .infinity, alignment: .leading)
-
-                                historyToggleChip
-                            }
-
-                            if !isHistoryExpanded {
-                                Text(localizedText("Toca para ver los ajustes guardados", "Click to view saved presets"))
-                                    .font(.caption2)
-                                    .foregroundStyle(.tertiary)
-                                    .transition(.opacity)
-                            }
-                        }
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.top, 2)
-                        .padding(.bottom, isHistoryExpanded ? 0 : 2)
-                    }
-                    .buttonStyle(.plain)
-                    .contentShape(Rectangle())
-                    .frame(minHeight: isHistoryExpanded ? 36 : 58, alignment: .top)
-                    .padding(.bottom, isHistoryExpanded ? 0 : 10)
-                    
-                    if isHistoryExpanded {
-                        ScrollView {
-                            VStack(spacing: 6) {
-                                ScrollInteractionObserver {
-                                    hasUserScrolled = true
-                                } onOverflowChange: { hasOverflow in
-                                    historyHasOverflow = hasOverflow
-                                }
-                                .frame(width: 0, height: 0)
-
-                                ForEach(Array(history.enumerated()), id: \.element.id) { index, item in
-                                    historyRow(item)
-                                        .transition(.opacity)
-                                }
-                            }
-                            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: history)
-                            .padding(.top, 2)
-                        }
-                        .onAppear {
-                            historyHasOverflow = false
-                        }
-                        .onChange(of: isHistoryExpanded) { _ in
-                            hasUserScrolled = false
-                            historyHasOverflow = false
-                        }
-                        .onChange(of: history.count) { _ in
-                            hasUserScrolled = false
-                            historyHasOverflow = false
-                        }
-                        .frame(minHeight: 0, maxHeight: .infinity, alignment: .top)
-                        .clipShape(RoundedRectangle(cornerRadius: 16))
-                        .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.14), value: isHistoryExpanded)
-                        .overlay(alignment: .bottom) {
-                            if shouldDisplayHistoryHint {
-                                VStack(spacing: 4) {
-                                    HStack(spacing: 6) {
-                                        Image(systemName: "chevron.down")
-                                        Text(localizedText("Desliza para ver más", "Scroll to see more"))
-                                        Image(systemName: "chevron.down")
-                                    }
-                                    .font(.caption2)
-                                    .foregroundStyle(Color.white.opacity(0.92))
-                                    .padding(.horizontal, 10)
-                                    .padding(.vertical, 6)
-                                    .background(
-                                        Capsule()
-                                            .fill(
-                                                LinearGradient(
-                                                    colors: [
-                                                        Color.blue.opacity(observedSystemScheme == .dark ? 0.7 : 0.62),
-                                                        Color.blue.opacity(observedSystemScheme == .dark ? 0.5 : 0.44)
-                                                    ],
-                                                    startPoint: .top,
-                                                    endPoint: .bottom
-                                                )
-                                            )
-                                    )
-                                    .overlay(
-                                        Capsule()
-                                            .stroke(Color.white.opacity(observedSystemScheme == .dark ? 0.12 : 0.18))
-                                    )
-                                    .shadow(
-                                        color: Color.blue.opacity(observedSystemScheme == .dark ? 0.22 : 0.14),
-                                        radius: 8,
-                                        y: 1
-                                    )
-                                    .padding(.bottom, 6)
-                                }
-                                .allowsHitTesting(false)
-                                .transition(.opacity)
-                            }
-                        }
-                    }
-                }
-                .padding(.bottom, isHistoryExpanded ? 0 : 4)
-            }
-        }
-    }
-    
-    private func historyRow(_ item: HistoryItem) -> some View {
-        historyRowContent(item)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.trailing, 44)
-            .contentShape(Rectangle())
-            .onTapGesture {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    aplicarHistorial(item)
-                    selectedHistory = item.id
-                }
-                copiarPreset()
-            }
-            .overlay(alignment: .trailing) {
-                Button {
-                    history.removeAll { $0.id == item.id }
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(hoveredHistory == item.id ? Color.red : Color.secondary)
-                        .frame(width: 36, height: 28)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.borderless)
-                .frame(width: 36, alignment: .trailing)
-                .padding(.trailing, 6)
-                .opacity(hoveredHistory == item.id ? 1 : 0.35)
-                .onHover { hovering in
-                    if hovering {
-                        NSCursor.pointingHand.push()
-                    } else {
-                        NSCursor.pop()
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                selectedHistory == item.id
-                ? Color.blue.opacity(0.25)
-                : (hoveredHistory == item.id ? Color.primary.opacity(0.10) : Color.primary.opacity(0.06))
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(
-                        selectedHistory == item.id
-                        ? Color.blue.opacity(0.4)
-                        : glassTint.opacity(0.9)
-                    )
-            )
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .zIndex(1)
-            .onHover { hovering in
-                hoveredHistory = hovering ? item.id : nil
-            }
-            .animation(.spring(response: 0.3, dampingFraction: 0.75), value: selectedHistory)
-            .contextMenu {
-                Button(localizedText("Copiar ajustes", "Copy preset")) {
-                    aplicarHistorial(item)
-                    copiarPreset()
-                }
-                Button(localizedText("Eliminar", "Delete")) {
-                    history.removeAll { $0.id == item.id }
-                }
-            }
-    }
-
-    private func historyToggleLabel(title: String, symbol: String) -> some View {
-        HStack(spacing: 6) {
-            Text(title)
-                .font(.caption2.weight(.semibold))
-
-            Image(systemName: symbol)
-                .font(.caption.weight(.semibold))
-        }
-    }
-
-    private func historyRowContent(_ item: HistoryItem) -> some View {
-        HStack(alignment: .center, spacing: 12) {
-
-            // Multiplier + BPM (left anchor, multiplier first)
-            HStack(spacing: 6) {
-                let label = item.multiplier == 2.0 ? "×2" : "÷2"
-
-                Group {
-                    if item.multiplier != 1.0 {
-                        if #available(macOS 26.0, *) {
-                            Text(label)
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(
-                                    LinearGradient(
-                                        colors: [
-                                            Color.blue,
-                                            Color.cyan.opacity(0.9)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
-                                    )
-                                )
-                                .shadow(color: Color.blue.opacity(0.35), radius: 2, y: 0)
-                        } else {
-                            Text(label)
-                                .font(.system(size: 13, weight: .bold, design: .rounded))
-                                .foregroundStyle(.white)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 4)
-                                .background(
-                                    Capsule()
-                                        .fill(Color.blue.opacity(0.85))
-                                )
-                        }
-                    } else {
-                        Text(label)
-                            .font(.system(size: 13, weight: .bold, design: .rounded))
-                            .opacity(0)
-                    }
-                }
-                .frame(width: 28) // reserve space so layout never shifts
-
-                Text("\(Int(item.bpm))")
-                    .font(.system(size: 20, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-            }
-
-            // Main info block (refactored)
-            VStack(alignment: .leading, spacing: 3) {
-
-                // Context (mode + emotion + role in one compact row)
-                Text("\(modeLabel(item.mode)) · \(emotionLabel(item.emotion)) · \(roleLabel(item.role))")
-                    .font(.caption2.weight(.medium))
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-
-                // Multiplier context (stable layout)
-                let resultBPM = Int(item.bpm * item.multiplier)
-                Text(
-                    item.multiplier != 1.0
-                    ? "→ \(resultBPM) BPM"
-                    : " "
-                )
-                .font(.caption2)
-                .opacity(item.multiplier != 1.0 ? 1 : 0)
-                .frame(height: 12)
-
-                // Technical parameters (clean + consistent)
-                HStack(spacing: 6) {
-                    Text("Pre \(item.preDelay) ms")
-                    Text("·")
-                    Text(String(format: "%.2f s", Double(item.decay) / 1000))
-                }
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 8)
-        .contentShape(Rectangle())
-        .scaleEffect(selectedHistory == item.id ? 1.02 : 1)
-        .blur(radius: hoveredHistory == item.id ? 0.2 : 0)
-    }
-
-    private func formattedBPM(_ item: HistoryItem) -> String {
-        let base = "\(Int(item.bpm)) BPM"
-        switch item.multiplier {
-        case 2.0:
-            return base + " ×2"
-        case 0.5:
-            return base + " ÷2"
-        default:
-            return base
-        }
+        HistorySectionView(
+            history: history,
+            isHistoryExpanded: Binding(
+                get: { isHistoryExpanded },
+                set: { isHistoryExpanded = $0 }
+            ),
+            selectedHistory: $selectedHistory,
+            hoveredHistory: $hoveredHistory,
+            historyHasOverflow: $historyHasOverflow,
+            hasUserScrolled: $hasUserScrolled,
+            glassTint: glassTint,
+            observedSystemScheme: observedSystemScheme,
+            localizedText: localizedText,
+            modeLabel: modeLabel,
+            emotionLabel: emotionLabel,
+            roleLabel: roleLabel,
+            onApply: aplicarHistorial,
+            onDelete: { item in
+                history.removeAll { $0.id == item.id }
+            },
+            onCopy: copiarPreset
+        )
     }
     
     private func copyButton(texto: String, field: CopyField) -> some View {
@@ -1587,36 +1039,11 @@ struct ContentView: View {
     // MARK: - Core
     
     private func calcularPreview() {
-        let trimmed = bpm.trimmingCharacters(in: .whitespacesAndNewlines)
-        let cleaned = trimmed.replacingOccurrences(of: ",", with: ".")
-        guard let bpmVal = Double(cleaned), bpmVal > 0 else {
-            clearPreview()
-            return
-        }
-        let effectiveBPM = bpmVal * bpmMultiplier
-        let result = generarReverbInteligente(
-            bpm: effectiveBPM,
-            size: mode,
-            emotion: emotion,
-            role: role
-        )
-        
-        preDelay = result.preDelay
-        let decayMs = result.decay * 1000
-        decayVal = "\(Int(decayMs)) ms"
-        sendLevel = result.send
-        eqText = result.eq
-        noteText = result.note
-        decay = Int(result.decay * 1000)
+        store.calcularPreview()
     }
 
     private func clearPreview() {
-        preDelay = 0
-        decay = 0
-        decayVal = ""
-        sendLevel = ""
-        eqText = ""
-        noteText = ""
+        store.clearPreview()
     }
 
     private func targetWindow() -> NSWindow? {
@@ -1653,76 +1080,12 @@ struct ContentView: View {
         window.setFrame(frame, display: true, animate: animated)
     }
 
-    private func restorePersistedState() {
-        let defaults = UserDefaults.standard
-        let decoder = JSONDecoder()
-
-        if let historyData = defaults.data(forKey: StorageKey.history),
-           let savedHistory = try? decoder.decode([HistoryItem].self, from: historyData) {
-            history = savedHistory
-        }
-
-        if let selectionData = defaults.data(forKey: StorageKey.selection),
-           let savedSelection = try? decoder.decode(PersistedSelection.self, from: selectionData) {
-            bpm = savedSelection.bpm
-            lastValidBPM = savedSelection.bpm
-            bpmMultiplier = savedSelection.bpmMultiplier
-            mode = savedSelection.mode == "Normal"
-                ? "Natural"
-                : (modes.contains(savedSelection.mode) ? savedSelection.mode : "Voz íntima")
-            emotion = savedSelection.emotion
-            role = savedSelection.role
-            isHistoryExpanded = savedSelection.isHistoryExpanded
-        }
-    }
-
-    private func persistHistory() {
-        guard hasLoadedPersistedState else { return }
-
-        let defaults = UserDefaults.standard
-        let encoder = JSONEncoder()
-        guard let data = try? encoder.encode(history) else { return }
-        defaults.set(data, forKey: StorageKey.history)
-    }
-
-    private func persistSelection() {
-        guard hasLoadedPersistedState else { return }
-
-        let selection = PersistedSelection(
-            bpm: bpm,
-            bpmMultiplier: bpmMultiplier,
-            mode: mode,
-            emotion: emotion,
-            role: role,
-            isHistoryExpanded: isHistoryExpanded
-        )
-
-        let defaults = UserDefaults.standard
-        let encoder = JSONEncoder()
-        guard let data = try? encoder.encode(selection) else { return }
-        defaults.set(data, forKey: StorageKey.selection)
-    }
-    
     private func guardarPresetEnHistorial() {
-        guard let item = currentHistoryItem else { return }
-        
-        history.insert(item, at: 0)
-        if history.count > 20 {
-            history.removeLast()
-        }
+        store.guardarPresetEnHistorial()
     }
     
     private func aplicarHistorial(_ item: HistoryItem) {
-        bpm = String(Int(item.bpm))
-        mode = item.mode
-        emotion = item.emotion
-        role = item.role
-        preDelay = Double(item.preDelay)
-        decay = item.decay
-        decayVal = item.decayVal
-        sendLevel = item.send
-        eqText = item.eq
-        noteText = item.note
+        store.aplicarHistorial(item)
     }
     
     private func copiarPreset() {
