@@ -38,6 +38,26 @@ Generador de reverb vocal basado en BPM para tomar decisiones rápidas y musical
 
 ---
 
+## ⚠️ Seguridad en macOS (Primer inicio)
+
+VoxSpace no está firmado, por lo que macOS puede bloquearlo la primera vez que lo abras.
+
+Si ocurre:
+
+### Opción 1 (recomendada)
+1. Haz clic derecho en **VoxSpace.app**
+2. Pulsa **Abrir**
+3. Pulsa **Abrir** de nuevo en la ventana emergente
+
+### Opción 2 (si sigue bloqueada)
+1. Abre **Ajustes del sistema**
+2. Ve a **Privacidad y seguridad**
+3. Desplázate hacia abajo y pulsa **Abrir igualmente**
+
+Después de esto, la app se abrirá con normalidad.
+
+---
+
 ## Uso rápido
 
 1. Introduce el BPM de tu track  
@@ -269,6 +289,26 @@ BPM-based vocal reverb generator for fast, musically coherent mixing decisions.
 - local persistence isolated in a single controlled file, easier to maintain and reset
 - app sandbox preserved with a reduced attack surface, without network access or external process execution
 - groundwork added to keep state, logic, and view responsibilities more clearly separated
+
+---
+
+## ⚠️ macOS Security (First Launch)
+
+VoxSpace is not signed, so macOS may block it the first time you open it.
+
+If that happens:
+
+### Option 1 (recommended)
+1. Right-click on **VoxSpace.app**
+2. Click **Open**
+3. Click **Open** again in the popup
+
+### Option 2 (if the app is still blocked)
+1. Open **System Settings**
+2. Go to **Privacy & Security**
+3. Scroll down and click **Open Anyway**
+
+After this, the app will open normally
 
 ---
 
