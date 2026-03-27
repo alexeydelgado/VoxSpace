@@ -10,6 +10,34 @@ Generador de reverb vocal basado en BPM para tomar decisiones rápidas y musical
 
 ---
 
+## Novedades en 2.5.1
+
+### Cambios funcionales
+
+- icono de la app modernizado para adaptarse mejor a las versiones actuales de macOS
+- persistencia principal movida a un archivo JSON local
+- historial y selección restaurados desde un único fichero de estado
+- base preparada para resetear el estado persistido borrando ese archivo
+
+### Cambios estructurales
+
+- estado funcional centralizado en `VoxSpaceStore`
+- motor de cálculo separado en `ReverbEngine.swift`
+- persistencia desacoplada en `VoxSpacePersistence.swift`
+- historial extraído a `HistorySectionView.swift`
+- modelos y utilidades separados para reducir la carga de `ContentView.swift`
+- reorganización interna para mejorar mantenimiento, legibilidad y escalabilidad del proyecto
+- simplificación de expresiones complejas en la interfaz para reducir fricción del compilador en Xcode
+
+### Estabilidad y seguridad
+
+- revisión básica de seguridad del código para reducir superficie innecesaria
+- persistencia local aislada en un único fichero controlado, más fácil de mantener y resetear
+- mantenimiento del sandbox de la app y de una superficie de ataque reducida, sin red ni ejecución externa
+- base preparada para seguir separando estado, lógica y vista con menos acoplamiento interno
+
+---
+
 ## Uso rápido
 
 1. Introduce el BPM de tu track  
@@ -31,12 +59,6 @@ VoxSpace es una app de macOS creada con SwiftUI para generar rápidamente ajuste
 
 El objetivo de la app no es sustituir el oído ni mezclar por ti, sino ofrecer un punto de partida rápido, coherente y musical.
 Está diseñada para evitar decisiones a ciegas al usar reverb y acelerar el flujo de trabajo en mezcla.
-
----
-
-## Captura
-
-![VoxSpace Interface](docs/images/white_ui.png)
 
 ---
 
@@ -151,6 +173,8 @@ La app recuerda:
 - el modo, emoción y capa activos
 - el estado del historial
 
+Desde la versión `2.5.1`, la persistencia principal de la app se guarda en un archivo JSON local dentro de `Application Support`. Esto facilita el mantenimiento, simplifica la arquitectura y permite resetear esa parte del estado borrando el archivo correspondiente.
+
 ---
 
 ## Idiomas
@@ -162,9 +186,15 @@ La app recuerda:
 
 ## Estructura del proyecto
 
-- `ContentView.swift` → UI + lógica
+- `ContentView.swift` → composición principal de la interfaz
+- `Models/` → modelos compartidos
+- `Stores/VoxSpaceStore.swift` → estado funcional central de la app
+- `Support/ReverbEngine.swift` → motor de cálculo de reverb
+- `Support/VoxSpacePersistence.swift` → persistencia local en archivo
+- `Views/HistorySectionView.swift` → vista del historial
 - `VoxSpaceApp.swift` → punto de entrada
 - `Assets.xcassets` → recursos
+- `VoxSpace.icon` → icono principal de la app
 
 ---
 
@@ -214,6 +244,34 @@ BPM-based vocal reverb generator for fast, musically coherent mixing decisions.
 
 ---
 
+## What’s new in 2.5.1
+
+### Functional changes
+
+- app icon modernized for better compatibility with current macOS versions
+- main persistence moved to a local JSON file
+- history and selection restored from a single state file
+- groundwork added to let users reset persisted state by deleting that file
+
+### Structural changes
+
+- functional app state centralized in `VoxSpaceStore`
+- reverb engine separated into `ReverbEngine.swift`
+- persistence decoupled into `VoxSpacePersistence.swift`
+- history extracted into `HistorySectionView.swift`
+- models and helpers separated to reduce the size of `ContentView.swift`
+- internal reorganization to improve maintainability, readability, and long-term scalability
+- simplification of complex UI expressions to reduce Xcode compiler friction
+
+### Stability and security
+
+- basic security review applied to keep the code surface lean
+- local persistence isolated in a single controlled file, easier to maintain and reset
+- app sandbox preserved with a reduced attack surface, without network access or external process execution
+- groundwork added to keep state, logic, and view responsibilities more clearly separated
+
+---
+
 ## Quick Use
 
 1. Enter your track BPM  
@@ -235,12 +293,6 @@ VoxSpace is a macOS app built with SwiftUI to quickly generate vocal reverb sett
 
 The goal of the app is not to replace your ear or mix for you, but to provide a fast, coherent and musical starting point.
 It is designed to avoid blind decisions when using reverb and to speed up the mixing workflow.
-
----
-
-## Screenshot
-
-![VoxSpace Interface](docs/images/white_ui.png)
 
 ---
 
@@ -355,6 +407,8 @@ The app remembers:
 - current mode, emotion and layer
 - history state
 
+Starting with version `2.5.1`, the app’s main persisted state is stored in a local JSON file inside `Application Support`. This makes maintenance easier, simplifies the architecture, and allows that part of the app state to be reset by deleting the file.
+
 ---
 
 ## Languages
@@ -366,9 +420,15 @@ The app remembers:
 
 ## Project structure
 
-- `ContentView.swift` → UI + logic
+- `ContentView.swift` → main UI composition
+- `Models/` → shared models
+- `Stores/VoxSpaceStore.swift` → central functional app state
+- `Support/ReverbEngine.swift` → reverb calculation engine
+- `Support/VoxSpacePersistence.swift` → local file persistence
+- `Views/HistorySectionView.swift` → history view
 - `VoxSpaceApp.swift` → entry point
 - `Assets.xcassets` → resources
+- `VoxSpace.icon` → primary app icon
 
 ---
 
